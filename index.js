@@ -1,18 +1,13 @@
 const { sync: glob } = require("fast-glob");
 const path = require("path");
-const fs = require("fs");
+const ts = require("typescript");
 const normalizePath = process.platform === "win32" ? require("normalize-path") : (x) => x;
-
-function stripJsonComments(data) {
-  return data.replace(/\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => (g ? "" : m));
-}
-
 module.exports = (relativeTsconfigPath = "./tsconfig.json") => {
-  const absTsconfigPath = path.resolve(process.cwd(), relativeTsconfigPath);
-  let tsconfigData = fs.readFileSync(absTsconfigPath, "utf8");
-  tsconfigData = stripJsonComments(tsconfigData);
-  const { compilerOptions } = JSON.parse(tsconfigData);
-
+  const cwd = process.cwd();
+  const tsconfigFile = ts.findConfigFile(cwd, ts.sys.fileExists, relativeTsconfigPath);
+  const configFile = ts.readConfigFile(tsconfigFile, ts.sys.readFile);
+  const tsconfigData = ts.parseJsonConfigFileContent(configFile.config, ts.sys, cwd);
+  const { options: compilerOptions } = tsconfigData;
   const pathKeys = Object.keys(compilerOptions.paths);
   const re = new RegExp(`^(${pathKeys.join("|")})`);
   return {
